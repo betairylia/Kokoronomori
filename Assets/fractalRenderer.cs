@@ -30,6 +30,8 @@ public class fractalRenderer : MonoBehaviour
     public bool renderUV2s = false;
     public bool renderTangents = false;
 
+    public int randomSeed = 0;
+
     int stoppedCount = 0;//DEBUGGING VARIABLE
 
     MeshFilter mFilter;
@@ -41,7 +43,9 @@ public class fractalRenderer : MonoBehaviour
     // Use this for initialization
     void Start ()
     {
-        switch(fractalType) //Simple factory
+        UnityEngine.Random.seed = randomSeed;
+
+        switch (fractalType) //Simple factory
         {
             case FractalType.boxTest:
                 startNode = new BoxTest();

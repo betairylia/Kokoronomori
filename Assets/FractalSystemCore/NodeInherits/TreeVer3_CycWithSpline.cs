@@ -8,6 +8,7 @@ namespace Assets.FractalSystemCore.NodeInherits
     {
         public Vector3 positionLocal = Vector3.zero;
         public Quaternion rotationGlobal = Quaternion.identity;
+        public Quaternion rotationLocal = Quaternion.identity;
         public Vector3 tangentGlobal = Vector3.zero;
         public float radius;
     }
@@ -25,6 +26,9 @@ namespace Assets.FractalSystemCore.NodeInherits
     {
         public int circleFragments = 6, nodes = 10;
         public float radiusRate = 0.025f, height = 1.0f;
+        public float gravityAngelsPerFactor = 50.0f;
+
+        float lengthStep = 0.1f;//每一段的长度
 
         List<TreeSplineNode> spline = new List<TreeSplineNode>();
 
@@ -54,7 +58,7 @@ namespace Assets.FractalSystemCore.NodeInherits
 
             Vector3 startPos = centerPos;
             Quaternion q = rotation;
-            float lengthStep = height * growRate / (spline.Count);
+            lengthStep = height * growRate / (spline.Count);
 
             /*
             在样条线上加一个PerlinNoise，两层（一层是幅度一层是相位）
@@ -97,14 +101,70 @@ namespace Assets.FractalSystemCore.NodeInherits
                 Vector3 rotateAxis = Quaternion.AngleAxis(noiseP[i], spline[i - 1].rotationGlobal * new Vector3(0, lengthStep, 0)) * spline[i - 1].tangentGlobal;
                 rotateAxis.Normalize();
 
-                //旋转
-                Quaternion quaternion = Quaternion.AngleAxis(noiseA[i], rotateAxis);
-                spline[i].rotationGlobal = quaternion * spline[i].rotationGlobal;
-                spline[i].tangentGlobal = quaternion * spline[i].tangentGlobal;
+                //旋转，并保存一个相对与上一个节点的旋转( rotationLocal )
+                spline[i].rotationLocal = Quaternion.AngleAxis(noiseA[i], rotateAxis);
+                spline[i].rotationGlobal = spline[i].rotationLocal * spline[i].rotationGlobal;
+                spline[i].tangentGlobal = spline[i].rotationLocal * spline[i].tangentGlobal;
 
                 //处理当前结点截面的大小
                 spline[i].radius = ((endRadius - startRadius) * (i / ((float)spline.Count)) + startRadius) * Random.Range(0.9f, 1.1f);
             }
+        }
+
+        public void AddGravity(float gravity = 1.0f)
+        {
+            if(branchType == BranchType.Trank)
+            {
+                gravity *= 0.5f;//主干就给我直起来！
+            }
+
+            //先产生一个重力影响分布。假设每个点受到的重力影响是固定的。（最后的朝向是一个积分）+ 白噪声（startStep为1的PerlinNoise）
+            float gravityInfectionNoiseIdentity = 0.0f;
+
+            float[] gravityInfection = MathCore.PerlinNoise(spline.Count, spline.Count / 5, gravityInfectionNoiseIdentity, gravity);
+
+            //一个一会需要重复计算的东西
+            float gravityFactorStepsGlobal = Mathf.Pow(gravityAngelsPerFactor, (height / nodes)) - 1;
+            Debug.Log(gravityFactorStepsGlobal);
+
+            int i;
+            //假设初始节点不受重力影响
+            for (i = 1; i < spline.Count; i++)
+            {
+                //先根据上一个节点的rotation和自身的rotationLocal更新自己的rotationGlobal和位置
+                spline[i].positionLocal = spline[i - 1].positionLocal + spline[i - 1].rotationGlobal * new Vector3(0, lengthStep, 0);
+                spline[i].rotationGlobal = spline[i].rotationLocal * spline[i - 1].rotationGlobal;
+
+                /*
+                为了求出要施加重力作用的旋转轴，我们需要先做生长方向对一个与地面平行的平面的投影，找出这个面上与这个投影正交的向量。
+                它就是我们的转轴。
+                */
+                //求出转轴
+                Vector3 gravityAxis = new Vector3(
+                    ((spline[i].rotationGlobal * Vector3.up).z), 
+                    0,
+                    -((spline[i].rotationGlobal * Vector3.up).x));
+
+                Vector3 dirc = spline[i].rotationGlobal * Vector3.up;
+
+                //计算重力因子，这里先假设它和生长方向与地面的夹角成余弦关系
+                float deg = Vector3.Angle(dirc, new Vector3(dirc.x, 0, dirc.z));
+
+                float gravityFactor = 
+                    ((1.0f - Mathf.Cos(deg)) //余弦关系因子
+                    //- (deg / 100.0f) //趋光性
+                    /*- 1.2f * ((i+1) / (float)spline.Count) * ((i+1) / (float)spline.Count)*/) //强制性尖端上扬（平方正比）
+                    * gravityFactorStepsGlobal //根据分段总数和总长度求得的补正
+                    * gravityInfection[i]; //加噪声的重力影响
+
+                //施加重力
+                spline[i].rotationLocal = Quaternion.AngleAxis(gravityFactor, gravityAxis) * spline[i].rotationLocal;
+                spline[i].rotationGlobal = spline[i].rotationLocal * spline[i - 1].rotationGlobal;
+                spline[i].tangentGlobal = spline[i].rotationLocal * spline[i - 1].tangentGlobal;
+            }
+
+            //最后要把这根树枝的rotation更新成最后一个节点的rotation
+            rotation = spline[spline.Count - 1].rotationGlobal;
         }
 
         #endregion
@@ -158,6 +218,7 @@ Indices =               ( x, y ) ( x + 1, y + 1 ) ( x + 1, y ); ( x, y ) ( x , y
             //先处理样条线的形态
             UpdateSpline();
             //施加重力
+            AddGravity(1.0f);
             //施加径向扭曲力
 
             //绘制
@@ -205,6 +266,7 @@ Indices =               ( x, y ) ( x + 1, y + 1 ) ( x + 1, y ); ( x, y ) ( x , y
                     indices[indicesCount++] = verticesCount + (x + 1 + (index + 1) * circleFragments);
                 }
 
+            //“封口”（因为是圆形封闭截面，需要把最后一个和第一个也连起来）
             for (index = 0; index < (spline.Count - 1); index++)
             {
                 //Indices = ( x, y ) ( x + 1, y + 1 ) ( x + 1, y ); ( x, y ) ( x , y + 1 ) ( x + 1, y + 1 )
@@ -226,51 +288,21 @@ Indices =               ( x, y ) ( x + 1, y + 1 ) ( x + 1, y ); ( x, y ) ( x , y
             state.rotation = Quaternion.identity;
         }
 
-        static float panStepStart = 60f;
-        static float panStepStop = 120f;
-        static float panOffsetMax = 60f;
-        static float tiltStart = 20f;
-        static float tiltEnd = 70f;
-
-        /*
-            生长率控制，在这里生长率为和这个树枝与主干的夹角（tilt）线性相关的一个量和一个加性高斯噪声叠加而成。start与end定义出这个线性相关量（与tilt相对应），noiseRad定义出噪声的方差（功率）。
-        */
-        static float growRateStart = 0.6f;
-        static float growRateEnd = 0.8f;
-        static float growNoiseRad = 0.04f;
+        public static int steps = 4;
+        public static int count = 3;
+        public static float branchStart = 0.1f;
+        public static float branchEnd = 0.9f;
+        public static float spread = 0.1f;
+        public static float tiltStart = 60f;//degrees
+        public static float tiltEnd = 30f;
+        public static float tiltRand = 10f;
+        public static float lenthStart = 1.4f;
+        public static float lenthEnd = 1.0f;
+        public static float lenthRand = 0.1f;
 
         public override void generateChildren()
         {
-            float nowDeg = 0f, offset = Random.Range(0f, panOffsetMax);
-
-            while (nowDeg < 360.0f)
-            {
-                nowDeg += Random.Range(panStepStart, panStepStop);
-                float tilt = Random.Range(tiltStart, tiltEnd);
-
-                FractalSystemNode node = new TreeVer3_CycWithSpline();
-                node.rotation = Quaternion.AngleAxis(tilt,
-                    Quaternion.AngleAxis(offset, Vector3.up) * Quaternion.AngleAxis(nowDeg, Vector3.up) * new Vector3(0, 0, 1)) * rotation;
-
-                node.centerPos = new Vector3(0, 0, 0);
-
-                //与旋转角度的余弦线性相关
-                node.growRate = growRate * (((Mathf.Cos(tiltStart / 180.0f * Mathf.PI) - Mathf.Cos(tilt / 180.0f * Mathf.PI)) / (Mathf.Cos(tiltStart / 180.0f * Mathf.PI) - Mathf.Cos(tiltEnd / 180.0f * Mathf.PI))) *
-                    ((growRateEnd) - (growRateStart)) + growRateStart + Random.Range(-growNoiseRad, growNoiseRad));
-
-                node.globalRotation = node.rotation;// * globalRotation;
-                node.centerPos = node.centerPos + globalPos;
-
-                //朝向下方的惩罚（得不到光照etc.）
-                Vector3 final = node.globalRotation * Vector3.up;
-                if (final.y < 0.1f)
-                {
-                    float factor = (0.1f - final.y) / 1.1f;
-                    node.growRate *= ((factor - 1) * (factor - 1)) * 0.4f + 0.6f;
-                }
-
-                child.Add(node);
-            }
+            //todo
         }
     }
 }

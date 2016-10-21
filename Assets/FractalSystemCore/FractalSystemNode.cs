@@ -21,6 +21,10 @@ namespace Assets.FractalSystemCore
 
     abstract public class FractalSystemNode
     {
+        public int randomSeed = 1;
+
+        public float startGrowRate = 0;
+
         public List<FractalSystemNode> child = new List<FractalSystemNode>();
 
         public FractalSystemNode father;
@@ -33,24 +37,36 @@ namespace Assets.FractalSystemCore
 
         public float growRate = 1.0f;
 
+        public int fractalMode = 0;
+
+        public int submeshCount = 1;
+
         abstract public void Express(
             Vector3[] vertices,
             ref int verticesCount,
-            int[] indices,
-            ref int indicesCount,
+            List<int[]> indices,
+            ref List<int> indicesCount,
             Vector3[] normals,
             ref int normalsCount,
             Vector2[] uvs,
-            ref int uvsCount,
-            Vector2[] uv2s,
-            ref int uv2sCount,
+            Vector2[] uv2s, 
+            Vector2[] uv3s,
+            Vector2[] uv4s,
             Vector4[] tangents,
             ref int tangentsCount,
             ref FractalRenderState state
             );
 
+        virtual public void init()
+        {
+
+        }
+
         abstract public void generateChildren();
-        //abstract public void updateChildren();
+        virtual public void update()
+        {
+
+        }
 
         #region treeOperation
         public FractalSystemNode GetMostLeft()

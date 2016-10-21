@@ -13,9 +13,11 @@ namespace Assets.FractalSystemCore
             return a * (1 - (1 - Mathf.Cos(x * Mathf.PI)) / 2) + b * (1 - Mathf.Cos(x * Mathf.PI)) / 2;
         }
 
-        public static float[] PerlinNoise(int count, int startStep, float startAmplitude, float offset)
+        public static float[] PerlinNoise(int count, int startStep, float startAmplitude, float[] offset = null)
         {
-            int i, j;
+            //Debug.Log(startStep);
+
+            int i, j, rCount = count;
 
             if(count % startStep != 0)
             {
@@ -52,10 +54,13 @@ namespace Assets.FractalSystemCore
                 startStep /= 2;
             }
 
-            //增加offset（“直流分量”）
-            for (i = 0; i < count; i++)
+            if(offset != null)
             {
-                result[i] += offset;
+                //增加offset（“直流分量”）
+                for (i = 0; i < rCount; i++)
+                {
+                    result[i] += offset[i];
+                }
             }
 
             return result.ToArray();

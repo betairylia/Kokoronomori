@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Assets.FractalSystemCore.NodeInherits
@@ -12,14 +13,14 @@ namespace Assets.FractalSystemCore.NodeInherits
         public override void Express(
             Vector3[] vertices,
             ref int verticesCount,
-            int[] indices,
-            ref int indicesCount,
+            List<int[]> indices,
+            ref List<int> indicesCount,
             Vector3[] normals,
             ref int normalsCount,
             Vector2[] uvs,
-            ref int uvsCount,
             Vector2[] uv2s,
-            ref int uv2sCount,
+            Vector2[] uv3s,
+            Vector2[] uv4s,
             Vector4[] tangents,
             ref int tangentsCount,
             ref FractalRenderState state
@@ -80,24 +81,24 @@ Indices =               ( x, y ) ( x + 1, y + 1 ) ( x + 1, y ); ( x, y ) ( x , y
                 for (y = 0; y < heightFragments; y++)
                 {
                     //Indices = ( x, y ) ( x + 1, y + 1 ) ( x + 1, y ); ( x, y ) ( x , y + 1 ) ( x + 1, y + 1 )
-                    indices[indicesCount++] = verticesCount + (x   + y     * circleFragments);
-                    indices[indicesCount++] = verticesCount + (x+1 + (y+1) * circleFragments);
-                    indices[indicesCount++] = verticesCount + (x+1 + y     * circleFragments);
-                    indices[indicesCount++] = verticesCount + (x   + y     * circleFragments);
-                    indices[indicesCount++] = verticesCount + (x   + (y+1) * circleFragments);
-                    indices[indicesCount++] = verticesCount + (x+1 + (y+1) * circleFragments);
+                    indices[0][indicesCount[0]++] = verticesCount + (x   + y     * circleFragments);
+                    indices[0][indicesCount[0]++] = verticesCount + (x+1 + (y+1) * circleFragments);
+                    indices[0][indicesCount[0]++] = verticesCount + (x+1 + y     * circleFragments);
+                    indices[0][indicesCount[0]++] = verticesCount + (x   + y     * circleFragments);
+                    indices[0][indicesCount[0]++] = verticesCount + (x   + (y+1) * circleFragments);
+                    indices[0][indicesCount[0]++] = verticesCount + (x+1 + (y+1) * circleFragments);
                 }
 
             for (y = 0; y < heightFragments; y++)
             {
                 x = circleFragments - 1;
                 //Indices = ( x, y ) ( x + 1, y + 1 ) ( x + 1, y ); ( x, y ) ( x , y + 1 ) ( x + 1, y + 1 )
-                indices[indicesCount++] = verticesCount + (x + y * circleFragments);
-                indices[indicesCount++] = verticesCount + (0 + (y + 1) * circleFragments);
-                indices[indicesCount++] = verticesCount + (0 + y * circleFragments);
-                indices[indicesCount++] = verticesCount + (x + y * circleFragments);
-                indices[indicesCount++] = verticesCount + (x + (y + 1) * circleFragments);
-                indices[indicesCount++] = verticesCount + (0 + (y + 1) * circleFragments);
+                indices[0][indicesCount[0]++] = verticesCount + (x + y * circleFragments);
+                indices[0][indicesCount[0]++] = verticesCount + (0 + (y + 1) * circleFragments);
+                indices[0][indicesCount[0]++] = verticesCount + (0 + y * circleFragments);
+                indices[0][indicesCount[0]++] = verticesCount + (x + y * circleFragments);
+                indices[0][indicesCount[0]++] = verticesCount + (x + (y + 1) * circleFragments);
+                indices[0][indicesCount[0]++] = verticesCount + (0 + (y + 1) * circleFragments);
             }
 
             #endregion

@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Assets.FractalSystemCore.NodeInherits
@@ -8,14 +9,14 @@ namespace Assets.FractalSystemCore.NodeInherits
         public override void Express(
             Vector3[] vertices,
             ref int verticesCount,
-            int[] indices,
-            ref int indicesCount,
+            List<int[]> indices,
+            ref List<int> indicesCount,
             Vector3[] normals,
             ref int normalsCount,
             Vector2[] uvs,
-            ref int uvsCount,
             Vector2[] uv2s,
-            ref int uv2sCount,
+            Vector2[] uv3s,
+            Vector2[] uv4s,
             Vector4[] tangents,
             ref int tangentsCount,
             ref FractalRenderState state
@@ -111,12 +112,12 @@ namespace Assets.FractalSystemCore.NodeInherits
                 verticesCount + 0, 
                 verticesCount + 1, 
                 verticesCount + 2 };
-            tmpIndices.CopyTo(indices, indicesCount);
+            tmpIndices.CopyTo(indices[0], indicesCount[0]);
 
             #endregion
 
             verticesCount += 8;
-            indicesCount += 36;
+            indicesCount[0] += 36;
             normalsCount += 8;
 
             state.centerPos += state.rotation * (rotation * new Vector3(0, 1, 0) * growRate + centerPos);
